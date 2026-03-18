@@ -33,7 +33,10 @@ case $ACTION in
         echo "Password Length: ${#VPN_PASSWORD}"
         
         # Check if the config is already imported
-        if ! openvpn3 configs-list | grep -q "Name: $CONFIG_NAME"; then
+        # We search specifically for the Name: <CONFIG_NAME> in the list
+        if openvpn3 configs-list | grep -q "Name: $CONFIG_NAME$"; then
+            echo "Config '$CONFIG_NAME' is already imported. Skipping import."
+        else
             echo "Config '$CONFIG_NAME' not found in imported list. Attempting to import from '$VPN_CONFIG_DIR'..."
             
             # Look for a .ovpn file that matches the name
