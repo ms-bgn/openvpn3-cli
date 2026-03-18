@@ -14,10 +14,16 @@ source "$VPN_TOOLS_PATH"
 
 ACTION=$1
 CONFIG_NAME=$2
+CONFIG_FILE=$3
 
 if [ -z "$ACTION" ] || [ -z "$CONFIG_NAME" ]; then
-    echo "Usage: $0 <up|down> <config-name>"
+    echo "Usage: $0 <up|down> <config-name> [config-file]"
     exit 1
+fi
+
+# Default config-file to config-name.ovpn if not provided
+if [ -z "$CONFIG_FILE" ]; then
+    CONFIG_FILE="${CONFIG_NAME}.ovpn"
 fi
 
 case $ACTION in
@@ -32,19 +38,26 @@ case $ACTION in
         echo "Username: ${VPN_USERNAME:0:1}*** (Length: ${#VPN_USERNAME})"
         echo "Password Length: ${#VPN_PASSWORD}"
         
+        echo "Checking if configuration '$CONFIG_NAME' is registered..."
+        
         # Check if the config is already imported
-        # We search specifically for the Name: <CONFIG_NAME> in the list
-        if openvpn3 configs-list | grep -q "Name: $CONFIG_NAME$"; then
-            echo "Config '$CONFIG_NAME' is already imported. Skipping import."
+        # This handles both table formats (name at start) and detailed views (Name: NAME)
+        REG_STATUS=$(openvpn3 configs-list | grep -E "(^|[[:space:]])$CONFIG_NAME([[:space:]]|$)" || true)
+        
+        if [ -n "$REG_STATUS" ]; then
+            echo "SUCCESS: Configuration '$CONFIG_NAME' is currently registered."
         else
-            echo "Config '$CONFIG_NAME' not found in imported list. Attempting to import from '$VPN_CONFIG_DIR'..."
+            echo "NOTICE: Configuration '$CONFIG_NAME' not found in OpenVPN 3 configuration manager."
+            echo "Attempting to locate $CONFIG_FILE in $VPN_CONFIG_DIR..."
             
-            # Look for a .ovpn file that matches the name
-            OVPN_FILE="$VPN_CONFIG_DIR/$CONFIG_NAME.ovpn"
+            # Look for the .ovpn file
+            OVPN_FILE="$VPN_CONFIG_DIR/$CONFIG_FILE"
             if [ -f "$OVPN_FILE" ]; then
-                vpn-import "$CONFIG_NAME.ovpn" "$CONFIG_NAME"
+                echo "Found $OVPN_FILE. Importing as '$CONFIG_NAME'..."
+                vpn-import "$CONFIG_FILE" "$CONFIG_NAME"
+                echo "SUCCESS: Configuration '$CONFIG_NAME' has been imported."
             else
-                echo "Error: Could not find '$OVPN_FILE' to import."
+                echo "ERROR: Configuration '$CONFIG_NAME' is not registered, and no source file was found at '$OVPN_FILE'."
                 exit 1
             fi
         fi
@@ -56,8 +69,15 @@ case $ACTION in
         echo "Disconnecting VPN session for '$CONFIG_NAME'..."
         vpn-down "$CONFIG_NAME"
         ;;
+    status)
+        echo "--- VPN Status ---"
+        vpn-status
+        echo ""
+        echo "--- Imported Profiles ---"
+        openvpn3 configs-list
+        ;;
     *)
-        echo "Invalid action: $ACTION. Use 'up' or 'down'."
+        echo "Invalid action: $ACTION. Use 'up', 'down', or 'status'."
         exit 1
         ;;
 esac
