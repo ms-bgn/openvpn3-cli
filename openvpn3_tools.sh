@@ -4,7 +4,7 @@
 # Source this file in your .bashrc: source /path/to/openvpn3_tools.sh
 
 # Directory paths
-VPN_BASE_DIR="$WORKSPACE/openvpn3-cli"
+VPN_BASE_DIR="$WORKSPACE"
 VPN_CONFIG_DIR="$VPN_BASE_DIR/config"
 VPN_ACCOUNT_DIR="$VPN_BASE_DIR/account"
 
