@@ -26,6 +26,21 @@ case $ACTION in
             echo "Error: VPN_USERNAME and VPN_PASSWORD environment variables must be set."
             exit 1
         fi
+        
+        # Check if the config is already imported
+        if ! openvpn3 configs-list | grep -q "Name: $CONFIG_NAME"; then
+            echo "Config '$CONFIG_NAME' not found in imported list. Attempting to import from '$VPN_CONFIG_DIR'..."
+            
+            # Look for a .ovpn file that matches the name
+            OVPN_FILE="$VPN_CONFIG_DIR/$CONFIG_NAME.ovpn"
+            if [ -f "$OVPN_FILE" ]; then
+                vpn-import "$CONFIG_NAME.ovpn" "$CONFIG_NAME"
+            else
+                echo "Error: Could not find '$OVPN_FILE' to import."
+                exit 1
+            fi
+        fi
+
         echo "Starting VPN session for '$CONFIG_NAME'..."
         printf "%s\n%s\n" "$VPN_USERNAME" "$VPN_PASSWORD" | openvpn3 session-start --config "$CONFIG_NAME"
         ;;
