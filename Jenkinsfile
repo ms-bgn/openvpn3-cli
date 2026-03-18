@@ -3,7 +3,7 @@ pipeline {
 
     parameters {
         choice(name: 'VPN_ACTION', choices: ['up', 'down'], description: 'Start or stop the VPN')
-        string(name: 'VPN_CONFIG', defaultValue: 'ovpn_wjv_1', description: 'The friendly name of the imported VPN config')
+        string(name: 'VPN_CONFIG', defaultValue: 'ovpn_wjv_1@bs0000xx', description: 'The friendly name of the imported VPN config')
         credentials(name: 'VPN_CREDENTIAL_ID', defaultValue: 'vpn-credentials', credentialType: "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl", description: 'Select the VPN credentials to use', required: true)
     }
 
