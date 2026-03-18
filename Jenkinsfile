@@ -7,19 +7,14 @@ pipeline {
         credentials(name: 'VPN_CREDENTIAL_ID', defaultValue: 'vpn-credentials', credentialType: "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl", description: 'Select the VPN credentials to use', required: true)
     }
 
-    environment {
-        // Use the credential ID from the parameter
-        VPN_CREDS = credentials("${params.VPN_CREDENTIAL_ID}")
-        VPN_USERNAME = "${env.VPN_CREDS_USR}"
-        VPN_PASSWORD = "${env.VPN_CREDS_PSW}"
-    }
-
     stages {
         stage('VPN Management') {
             steps {
                 script {
-                    sh "chmod +x ./jenkins_vpn_wrapper.sh"
-                    sh "./jenkins_vpn_wrapper.sh ${params.VPN_ACTION} ${params.VPN_CONFIG}"
+                    withCredentials([usernamePassword(credentialsId: params.VPN_CREDENTIAL_ID, passwordVariable: 'VPN_PASSWORD', usernameVariable: 'VPN_USERNAME')]) {
+                        sh "chmod +x ./jenkins_vpn_wrapper.sh"
+                        sh "./jenkins_vpn_wrapper.sh ${params.VPN_ACTION} ${params.VPN_CONFIG}"
+                    }
                 }
             }
         }

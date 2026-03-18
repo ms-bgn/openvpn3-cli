@@ -23,9 +23,14 @@ fi
 case $ACTION in
     up)
         if [ -z "$VPN_USERNAME" ] || [ -z "$VPN_PASSWORD" ]; then
-            echo "Error: VPN_USERNAME and VPN_PASSWORD environment variables must be set."
+            echo "Error: VPN_USERNAME or VPN_PASSWORD environment variables are empty."
+            echo "Check if the Credential ID in Jenkins matches and is 'Username with password' type."
             exit 1
         fi
+        
+        echo "Validating credentials..."
+        echo "Username: ${VPN_USERNAME:0:1}*** (Length: ${#VPN_USERNAME})"
+        echo "Password Length: ${#VPN_PASSWORD}"
         
         # Check if the config is already imported
         if ! openvpn3 configs-list | grep -q "Name: $CONFIG_NAME"; then
