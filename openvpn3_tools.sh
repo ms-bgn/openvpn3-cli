@@ -121,32 +121,40 @@ vpn-config-del() {
         echo "Usage: vpn-config-del <config-name>"
         return 1
     fi
-    
     local config_name="$1"
     
-    # Get all configuration paths for this name
-    # OpenVPN 3 configs-list output format usually contains the name followed by the path or can be queried.
-    # To be safe, we use 'openvpn3 configs-list' and grep for the requested name, then extract paths.
-    # Note: openvpn3 configs-list output can vary, but usually 'openvpn3 config-remove --config NAME' 
-    # fails if duplicates exist. Systematically removing by path is safer.
+    # Identify all configuration paths for this name accurately.
+    # The output format can vary, but usually looks like:
+    # ------------------------------------------------------------------------------
+    # /net/openvpn/v3/configuration/...
+    #   Name: ovpn_wjv_1
+    # ------------------------------------------------------------------------------
+    # OR sometimes name is first.
     
-    local paths=$(openvpn3 configs-list | grep -A 1 "Name: $config_name$" | grep "Config path:" | awk '{print $3}')
+    local paths=$(openvpn3 configs-list | awk -v name="$config_name" '
+        # Look for configuration paths
+        /\/net\/openvpn\/v3\/configuration\// { 
+            current_path = $0; 
+            # Clean up leading/trailing whitespace
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", current_path);
+        }
+        # If we see Name: match, record the last seen path
+        /Name: [^ ]+/ && $2 == name { 
+            if(current_path != "") { print current_path; current_path = "" }
+        }
+        # Fallback for if name is on same line as path or other formats
+        $0 ~ name && /\/net\/openvpn\/v3\/configuration\// {
+             match($0, /\/net\/openvpn\/v3\/configuration\/[^ ]+/);
+             print substr($0, RSTART, RLENGTH);
+        }
+    ')
     
     if [ -z "$paths" ]; then
-        # Fallback for different output formats or if name is used directly in older versions
-        echo "Searching for configurations named '$config_name'..."
-        # If openvpn3 config-remove fails with name, we try to find paths more aggressively
-        # Some versions show 'Configuration path: ...' on the line after 'Name: ...'
-        paths=$(openvpn3 configs-list | grep -B 1 -E "^$config_name\s+" | grep -o "/net/openvpn/v3/configuration/[^ ]*")
-        
-        if [ -z "$paths" ]; then
-            # One last try using a broad grep if the above fails
-            paths=$(openvpn3 configs-list | grep "$config_name" | awk '{print $1}' | while read -r name; [ "$name" == "$config_name" ] && echo "match")
-            # If we still can't find paths, we might have to rely on the user or a different command.
-            # But usually, openvpn3 configs-list shows paths.
-            echo "Error: Could not find unique paths for '$config_name'. You may need to remove them manually using 'openvpn3 config-remove --config <PATH>'."
-            return 1
-        fi
+        # Last-ditch attempt: If no paths found, try to remove by name directly 
+        # (will fail if duplicates exist, but it's our last shot)
+        echo "No paths found for '$config_name', attempting removal by name..."
+        openvpn3 config-remove --config "$config_name"
+        return $?
     fi
 
     echo "Found multiple profiles for '$config_name'. Removing all..."
