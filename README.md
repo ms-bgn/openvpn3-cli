@@ -38,3 +38,13 @@ Secure it and connect:
 chmod 600 account/work-creds.txt
 vpn-up my-vpn work-creds.txt
 ```
+
+## Jenkins Integration
+
+To integrate with Jenkins, use the provided `Jenkinsfile` and `jenkins_vpn_wrapper.sh`.
+
+1.  **Credentials**: In Jenkins, create a "Username with password" credential with the ID `vpn-credentials`.
+2.  **Job Setup**: Create a new Pipeline job and point it to the `Jenkinsfile` in this repository.
+3.  **Parameters**: The pipeline includes parameters for the VPN action (`up`/`down`) and the config name.
+
+For detailed setup instructions, see the walkthrough.
