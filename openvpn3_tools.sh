@@ -115,11 +115,43 @@ vpn-status() {
 }
 
 # Function: vpn-config-del
-# Deletes an imported configuration
+# Deletes all imported configurations with the given name
 vpn-config-del() {
     if [ -z "$1" ]; then
         echo "Usage: vpn-config-del <config-name>"
         return 1
     fi
-    openvpn3 config-remove --config "$1"
+    
+    local config_name="$1"
+    
+    # Get all configuration paths for this name
+    # OpenVPN 3 configs-list output format usually contains the name followed by the path or can be queried.
+    # To be safe, we use 'openvpn3 configs-list' and grep for the requested name, then extract paths.
+    # Note: openvpn3 configs-list output can vary, but usually 'openvpn3 config-remove --config NAME' 
+    # fails if duplicates exist. Systematically removing by path is safer.
+    
+    local paths=$(openvpn3 configs-list | grep -A 1 "Name: $config_name$" | grep "Config path:" | awk '{print $3}')
+    
+    if [ -z "$paths" ]; then
+        # Fallback for different output formats or if name is used directly in older versions
+        echo "Searching for configurations named '$config_name'..."
+        # If openvpn3 config-remove fails with name, we try to find paths more aggressively
+        # Some versions show 'Configuration path: ...' on the line after 'Name: ...'
+        paths=$(openvpn3 configs-list | grep -B 1 -E "^$config_name\s+" | grep -o "/net/openvpn/v3/configuration/[^ ]*")
+        
+        if [ -z "$paths" ]; then
+            # One last try using a broad grep if the above fails
+            paths=$(openvpn3 configs-list | grep "$config_name" | awk '{print $1}' | while read -r name; [ "$name" == "$config_name" ] && echo "match")
+            # If we still can't find paths, we might have to rely on the user or a different command.
+            # But usually, openvpn3 configs-list shows paths.
+            echo "Error: Could not find unique paths for '$config_name'. You may need to remove them manually using 'openvpn3 config-remove --config <PATH>'."
+            return 1
+        fi
+    fi
+
+    echo "Found multiple profiles for '$config_name'. Removing all..."
+    for path in $paths; do
+        echo "Removing: $path"
+        openvpn3 config-remove --config "$path"
+    done
 }
