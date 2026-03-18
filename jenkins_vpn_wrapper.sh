@@ -3,7 +3,7 @@
 # Jenkins VPN Wrapper
 # Allows non-interactive VPN connection using environment variables
 
-VPN_TOOLS_PATH="/Users/rafi/Documents/biznetgio/openvpn3-cli/openvpn3_tools.sh"
+VPN_TOOLS_PATH="$HOME/openvpn3-cli/openvpn3_tools.sh"
 
 if [ ! -f "$VPN_TOOLS_PATH" ]; then
     echo "Error: VPN tools script not found at $VPN_TOOLS_PATH"
