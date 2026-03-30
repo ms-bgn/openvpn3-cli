@@ -53,10 +53,10 @@ properties([
          ]
         ],
 
-        // 4. Dynamic Credentials ID (Reactive Reference for up)
+        // 4. Dynamic Credentials Dropdown (Reactive Reference for up)
         [$class: 'DynamicReferenceParameter', 
          choiceType: 'ET_FORMATTED_HTML', 
-         description: 'Manual entry for Credential ID', 
+         description: 'Select VPN credentials', 
          name: 'VPN_CREDENTIAL_ID', 
          randomName: 'dynamic-reference-parameter-30303033', 
          referencedParameters: 'VPN_ACTION', 
@@ -65,7 +65,16 @@ properties([
              fallbackScript: [sandbox: true, script: "return ['error']"], 
              script: [sandbox: true, script: """
                 if (VPN_ACTION.equals("up")) {
-                    return "<b>VPN Credentials ID</b><br><input name='value' value='vpn-credentials' class='setting-input' style='width:100%' type='text'>"
+                    def instance = jenkins.model.Jenkins.instance
+                    def creds = com.cloudbees.plugins.credentials.CredentialsProvider.lookupCredentials(
+                        com.cloudbees.plugins.credentials.common.StandardUsernameCredentials.class,
+                        instance,
+                        hudson.security.ACL.SYSTEM,
+                        null
+                    )
+                    
+                    def options = creds.collect { "<option value='\${it.id}'>\${it.id} (\${it.description ?: 'No description'})</option>" }.join('')
+                    return "<b>Select VPN Credentials</b><br><select name='value' class='setting-input' style='width:100%'>\${options}</select>"
                 }
                 return ""
              """]
