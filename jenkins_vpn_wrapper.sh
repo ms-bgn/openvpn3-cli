@@ -16,7 +16,12 @@ ACTION=$1
 CONFIG_NAME=$2
 CONFIG_FILE=$3
 
-if [ -z "$ACTION" ] || [ -z "$CONFIG_NAME" ]; then
+if [ -z "$ACTION" ]; then
+    echo "Usage: $0 <up|down|status> [config-name] [config-file]"
+    exit 1
+fi
+
+if [ "$ACTION" != "status" ] && [ -z "$CONFIG_NAME" ]; then
     echo "Usage: $0 <up|down> <config-name> [config-file]"
     exit 1
 fi
