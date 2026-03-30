@@ -1,74 +1,81 @@
-pipeline {
-    agent any
-
-    parameters {
+properties([
+    parameters([
         // 1. Action Selector (Active Choice)
         [$class: 'ChoiceParameter', 
-         name: 'VPN_ACTION', 
          choiceType: 'PT_SINGLE_SELECT', 
          description: 'Select VPN operation', 
+         filterLength: 1, 
+         filterable: false, 
+         name: 'VPN_ACTION', 
+         randomName: 'choice-parameter-30303030', 
          script: [
              $class: 'GroovyScript', 
-             fallbackScript: [sandbox: true, script: "return ['error']"],
+             fallbackScript: [sandbox: true, script: "return ['error']"], 
              script: [sandbox: true, script: "return ['up', 'down', 'status']"]
          ]
-        ]
+        ],
 
-        // 2. Dynamic Config Field (Reactive Reference for up/down)
-        [$class: 'CascadeChoiceParameter', 
-         name: 'VPN_CONFIG', 
-         referencedParameters: 'VPN_ACTION', 
-         choiceType: 'ET_FORMAT_HTML', 
+        // 2. Dynamic Config (Reactive Reference)
+        [$class: 'DynamicReferenceParameter', 
+         choiceType: 'ET_FORMATTED_HTML', 
          description: 'The friendly name of the VPN config', 
+         name: 'VPN_CONFIG', 
+         randomName: 'dynamic-reference-parameter-30303031', 
+         referencedParameters: 'VPN_ACTION', 
          script: [
              $class: 'GroovyScript', 
-             fallbackScript: [sandbox: true, script: "return ['error']"],
+             fallbackScript: [sandbox: true, script: "return ['error']"], 
              script: [sandbox: true, script: """
-                if (VPN_ACTION == 'up' || VPN_ACTION == 'down') {
-                    return '<b>VPN Config friendly name</b><br><input name="value" value="ovpn_wjv_1@bs0000xx" class="setting-input" style="width:100%" type="text">'
+                if (VPN_ACTION.equals("up") || VPN_ACTION.equals("down")) {
+                    return "<b>VPN Config friendly name</b><br><input name='value' value='ovpn_wjv_1@bs0000xx' class='setting-input' style='width:100%' type='text'>"
                 }
                 return ""
              """]
          ]
-        ]
+        ],
 
-        // 3. Dynamic File Field (Reactive Reference for up)
-        [$class: 'CascadeChoiceParameter', 
-         name: 'VPN_FILE', 
-         referencedParameters: 'VPN_ACTION', 
-         choiceType: 'ET_FORMAT_HTML', 
+        // 3. Dynamic File (Reactive Reference for up)
+        [$class: 'DynamicReferenceParameter', 
+         choiceType: 'ET_FORMATTED_HTML', 
          description: 'The .ovpn filename', 
-         script: [
-             $class: 'GroovyScript', 
-             fallbackScript: [sandbox: true, script: "return ['error']"],
-             script: [sandbox: true, script: """
-                if (VPN_ACTION == 'up') {
-                    return '<b>.ovpn Filename</b><br><input name="value" value="ovpn_wjv_1.ovpn" class="setting-input" style="width:100%" type="text">'
-                }
-                return ""
-             """]
-         ]
-        ]
-
-        // 4. Dynamic Credentials ID Field (Reactive Reference for up)
-        [$class: 'CascadeChoiceParameter', 
-         name: 'VPN_CREDENTIAL_ID', 
+         name: 'VPN_FILE', 
+         randomName: 'dynamic-reference-parameter-30303032', 
          referencedParameters: 'VPN_ACTION', 
-         choiceType: 'ET_FORMAT_HTML', 
-         description: 'Select credentials', 
          script: [
              $class: 'GroovyScript', 
-             fallbackScript: [sandbox: true, script: "return ['error']"],
+             fallbackScript: [sandbox: true, script: "return ['error']"], 
              script: [sandbox: true, script: """
-                if (VPN_ACTION == 'up') {
-                    // Manual entry for ID - defaults to vpn-credentials
-                    return '<b>VPN Credentials ID</b><br><input name="value" value="vpn-credentials" class="setting-input" style="width:100%" type="text">'
+                if (VPN_ACTION.equals("up")) {
+                    return "<b>.ovpn Filename</b><br><input name='value' value='ovpn_wjv_1.ovpn' class='setting-input' style='width:100%' type='text'>"
+                }
+                return ""
+             """]
+         ]
+        ],
+
+        // 4. Dynamic Credentials ID (Reactive Reference for up)
+        [$class: 'DynamicReferenceParameter', 
+         choiceType: 'ET_FORMATTED_HTML', 
+         description: 'Manual entry for Credential ID', 
+         name: 'VPN_CREDENTIAL_ID', 
+         randomName: 'dynamic-reference-parameter-30303033', 
+         referencedParameters: 'VPN_ACTION', 
+         script: [
+             $class: 'GroovyScript', 
+             fallbackScript: [sandbox: true, script: "return ['error']"], 
+             script: [sandbox: true, script: """
+                if (VPN_ACTION.equals("up")) {
+                    return "<b>VPN Credentials ID</b><br><input name='value' value='vpn-credentials' class='setting-input' style='width:100%' type='text'>"
                 }
                 return ""
              """]
          ]
         ]
-    }
+    ])
+])
+
+pipeline {
+    agent any
 
     stages {
         stage('VPN Management') {
