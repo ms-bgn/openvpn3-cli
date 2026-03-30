@@ -31,7 +31,8 @@ pipeline {
                                 string(name: 'VPN_CONFIG', defaultValue: 'ovpn_wjv_1@bs0000xx', description: 'The friendly name of the VPN config to disconnect')
                             ]
                         )
-                        vpnConfig = userInput.VPN_CONFIG
+                        // If input has only one parameter, it returns the value directly as a String
+                        vpnConfig = userInput
                     }
 
                     // Execution block
