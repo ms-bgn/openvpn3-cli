@@ -2,51 +2,94 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'VPN_ACTION', choices: ['up', 'down', 'status'], description: 'Select the operation to perform')
+        // 1. Action Selector (Active Choice)
+        [$class: 'ChoiceParameter', 
+         name: 'VPN_ACTION', 
+         choiceType: 'PT_SINGLE_SELECT', 
+         description: 'Select VPN operation', 
+         script: [
+             $class: 'GroovyScript', 
+             fallbackScript: [sandbox: true, script: "return ['error']"],
+             script: [sandbox: true, script: "return ['up', 'down', 'status']"]
+         ]
+        ]
+
+        // 2. Dynamic Config Field (Reactive Reference for up/down)
+        [$class: 'CascadeChoiceParameter', 
+         name: 'VPN_CONFIG', 
+         referencedParameters: 'VPN_ACTION', 
+         choiceType: 'ET_FORMAT_HTML', 
+         description: 'The friendly name of the VPN config', 
+         script: [
+             $class: 'GroovyScript', 
+             fallbackScript: [sandbox: true, script: "return ['error']"],
+             script: [sandbox: true, script: """
+                if (VPN_ACTION == 'up' || VPN_ACTION == 'down') {
+                    return '<b>VPN Config friendly name</b><br><input name="value" value="ovpn_wjv_1@bs0000xx" class="setting-input" style="width:100%" type="text">'
+                }
+                return ""
+             """]
+         ]
+        ]
+
+        // 3. Dynamic File Field (Reactive Reference for up)
+        [$class: 'CascadeChoiceParameter', 
+         name: 'VPN_FILE', 
+         referencedParameters: 'VPN_ACTION', 
+         choiceType: 'ET_FORMAT_HTML', 
+         description: 'The .ovpn filename', 
+         script: [
+             $class: 'GroovyScript', 
+             fallbackScript: [sandbox: true, script: "return ['error']"],
+             script: [sandbox: true, script: """
+                if (VPN_ACTION == 'up') {
+                    return '<b>.ovpn Filename</b><br><input name="value" value="ovpn_wjv_1.ovpn" class="setting-input" style="width:100%" type="text">'
+                }
+                return ""
+             """]
+         ]
+        ]
+
+        // 4. Dynamic Credentials ID Field (Reactive Reference for up)
+        [$class: 'CascadeChoiceParameter', 
+         name: 'VPN_CREDENTIAL_ID', 
+         referencedParameters: 'VPN_ACTION', 
+         choiceType: 'ET_FORMAT_HTML', 
+         description: 'Select credentials', 
+         script: [
+             $class: 'GroovyScript', 
+             fallbackScript: [sandbox: true, script: "return ['error']"],
+             script: [sandbox: true, script: """
+                if (VPN_ACTION == 'up') {
+                    // Manual entry for ID - defaults to vpn-credentials
+                    return '<b>VPN Credentials ID</b><br><input name="value" value="vpn-credentials" class="setting-input" style="width:100%" type="text">'
+                }
+                return ""
+             """]
+         ]
+        ]
     }
 
     stages {
-        stage('Configure & Run VPN') {
+        stage('VPN Management') {
             steps {
                 script {
-                    def vpnConfig = ""
-                    def vpnFile = ""
-                    def vpnCredId = ""
+                    def action = params.VPN_ACTION
+                    def config = params.VPN_CONFIG ?: ""
+                    def file = params.VPN_FILE ?: ""
+                    def credId = params.VPN_CREDENTIAL_ID ?: ""
 
-                    // Dynamic handling based on Action
-                    if (params.VPN_ACTION == 'up') {
-                        def userInput = input(
-                            id: 'vpnInputUp', message: 'Enter details for VPN connection', parameters: [
-                                string(name: 'VPN_CONFIG', defaultValue: 'ovpn_wjv_1@bs0000xx', description: 'The friendly name of the VPN config'),
-                                string(name: 'VPN_FILE', defaultValue: 'ovpn_wjv_1.ovpn', description: 'The .ovpn filename'),
-                                credentials(name: 'VPN_CREDENTIAL_ID', defaultValue: 'vpn-credentials', credentialType: "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl", description: 'Select credentials', required: true)
-                            ]
-                        )
-                        vpnConfig = userInput.VPN_CONFIG
-                        vpnFile = userInput.VPN_FILE
-                        vpnCredId = userInput.VPN_CREDENTIAL_ID
-                    } else if (params.VPN_ACTION == 'down') {
-                        def userInput = input(
-                            id: 'vpnInputDown', message: 'Enter details to disconnect VPN', parameters: [
-                                string(name: 'VPN_CONFIG', defaultValue: 'ovpn_wjv_1@bs0000xx', description: 'The friendly name of the VPN config to disconnect')
-                            ]
-                        )
-                        // If input has only one parameter, it returns the value directly as a String
-                        vpnConfig = userInput
-                    }
+                    echo "Starting VPN action: ${action}"
 
-                    // Execution block
-                    echo "Starting VPN action: ${params.VPN_ACTION}"
-                    
-                    if (params.VPN_ACTION == 'up') {
-                        withCredentials([usernamePassword(credentialsId: vpnCredId, passwordVariable: 'VPN_PASSWORD', usernameVariable: 'VPN_USERNAME')]) {
+                    if (action == 'up') {
+                        withCredentials([usernamePassword(credentialsId: credId, passwordVariable: 'VPN_PASSWORD', usernameVariable: 'VPN_USERNAME')]) {
                             sh "chmod +x ./jenkins_vpn_wrapper.sh"
-                            sh "./jenkins_vpn_wrapper.sh up ${vpnConfig} ${vpnFile}"
+                            sh "./jenkins_vpn_wrapper.sh up ${config} ${file}"
                         }
-                    } else if (params.VPN_ACTION == 'down') {
+                    } else if (action == 'down') {
                         sh "chmod +x ./jenkins_vpn_wrapper.sh"
-                        sh "./jenkins_vpn_wrapper.sh down ${vpnConfig}"
-                    } else if (params.VPN_ACTION == 'status') {
+                        sh "./jenkins_vpn_wrapper.sh down ${config}"
+                    } else if (action == 'status') {
                         sh "chmod +x ./jenkins_vpn_wrapper.sh"
                         sh "./jenkins_vpn_wrapper.sh status"
                     }
