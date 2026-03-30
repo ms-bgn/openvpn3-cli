@@ -82,9 +82,11 @@ pipeline {
             steps {
                 script {
                     def action = params.VPN_ACTION
-                    def config = params.VPN_CONFIG ?: ""
-                    def file = params.VPN_FILE ?: ""
-                    def credId = params.VPN_CREDENTIAL_ID ?: ""
+                    // Active Choices DynamicReferenceParameter often appends a trailing comma.
+                    // We strip it here to ensure the values are clean strings.
+                    def config = (params.VPN_CONFIG ?: "").split(',')[0]
+                    def file = (params.VPN_FILE ?: "").split(',')[0]
+                    def credId = (params.VPN_CREDENTIAL_ID ?: "").split(',')[0]
 
                     echo "Starting VPN action: ${action}"
 
