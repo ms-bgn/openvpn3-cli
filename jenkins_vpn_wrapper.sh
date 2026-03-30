@@ -67,12 +67,26 @@ case $ACTION in
             fi
         fi
 
-        echo "Starting VPN session for '$CONFIG_NAME'..."
-        printf "%s\n%s\n" "$VPN_USERNAME" "$VPN_PASSWORD" | openvpn3 session-start --config "$CONFIG_NAME"
+        echo "Checking if a session for '$CONFIG_NAME' is already running..."
+        SESSION_STATUS=$(openvpn3 sessions-list | grep "$CONFIG_NAME" || true)
+        
+        if [ -n "$SESSION_STATUS" ]; then
+            echo "SUCCESS: A session for '$CONFIG_NAME' is already running. Skipping start."
+        else
+            echo "Starting VPN session for '$CONFIG_NAME'..."
+            printf "%s\n%s\n" "$VPN_USERNAME" "$VPN_PASSWORD" | openvpn3 session-start --config "$CONFIG_NAME"
+        fi
         ;;
     down)
-        echo "Disconnecting VPN session for '$CONFIG_NAME'..."
-        vpn-down "$CONFIG_NAME"
+        echo "Checking if an active session for '$CONFIG_NAME' exists..."
+        SESSION_STATUS=$(openvpn3 sessions-list | grep "$CONFIG_NAME" || true)
+        
+        if [ -z "$SESSION_STATUS" ]; then
+            echo "SUCCESS: No active session found for '$CONFIG_NAME'. Already disconnected."
+        else
+            echo "Disconnecting VPN session for '$CONFIG_NAME'..."
+            vpn-down "$CONFIG_NAME"
+        fi
         ;;
     status)
         echo "--- VPN Status ---"
